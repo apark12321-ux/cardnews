@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import express from 'express';
+import { getCarouselLimit, getInstagramAccountStatus, publishCarousel } from './src/instagramPublisher.mjs';
 
 dotenv.config();
 
@@ -12,7 +13,7 @@ const app = express();
 const port = Number(process.env.PORT || 3000);
 const graphVersion = process.env.GRAPH_API_VERSION || 'v23.0';
 
-app.use(express.json({ limit: '30mb' }));
+app.use(express.json({ limit: '50mb' }));
 app.use(express.static(__dirname));
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
@@ -64,64 +65,31 @@ async function uploadToCloudinary({ dataUrl, fileName = 'cardnews.png' }) {
     body
   });
 
-  const result = await response.json();
+  const result = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(result?.error?.message || 'Cloudinary upload failed.');
   }
   return result.secure_url;
 }
 
-async function graphPost(pathname, params) {
-  requiredEnv(['IG_USER_ID', 'INSTAGRAM_ACCESS_TOKEN']);
-  const url = new URL(`https://graph.facebook.com/${graphVersion}/${pathname}`);
-  const body = new URLSearchParams({
-    ...params,
-    access_token: process.env.INSTAGRAM_ACCESS_TOKEN
-  });
-
-  const response = await fetch(url, { method: 'POST', body });
-  const result = await response.json();
-  if (!response.ok) {
-    throw new Error(result?.error?.message || 'Instagram Graph API request failed.');
-  }
-  return result;
-}
-
-async function createCarouselItem(imageUrl) {
-  const igUserId = process.env.IG_USER_ID;
-  const result = await graphPost(`${igUserId}/media`, {
-    image_url: imageUrl,
-    is_carousel_item: 'true'
-  });
-  return result.id;
-}
-
-async function createCarouselContainer(children, caption) {
-  const igUserId = process.env.IG_USER_ID;
-  const result = await graphPost(`${igUserId}/media`, {
-    media_type: 'CAROUSEL',
-    children: children.join(','),
-    caption
-  });
-  return result.id;
-}
-
-async function publishContainer(creationId) {
-  const igUserId = process.env.IG_USER_ID;
-  const result = await graphPost(`${igUserId}/media_publish`, {
-    creation_id: creationId
-  });
-  return result.id;
-}
-
 app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
     graphVersion,
+    carouselLimit: getCarouselLimit(),
     dryRunOnly: process.env.DRY_RUN_ONLY === 'true',
     hasInstagramConfig: Boolean(process.env.IG_USER_ID && process.env.INSTAGRAM_ACCESS_TOKEN),
     hasCloudinaryConfig: Boolean(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET)
   });
+});
+
+app.get('/api/instagram/account', async (req, res, next) => {
+  try {
+    const status = await getInstagramAccountStatus();
+    res.json(status);
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.post('/api/upload-image', async (req, res, next) => {
@@ -151,36 +119,8 @@ app.post('/api/publish/carousel', async (req, res, next) => {
       }
     }
 
-    if (uploadedUrls.length < 2 || uploadedUrls.length > 10) {
-      return res.status(400).json({ ok: false, error: 'Instagram carousel publishing needs 2 to 10 image URLs.' });
-    }
-
-    const payloadPreview = {
-      images: uploadedUrls,
-      caption,
-      graphVersion
-    };
-
-    if (dryRun || process.env.DRY_RUN_ONLY === 'true') {
-      return res.json({ ok: true, dryRun: true, ...payloadPreview });
-    }
-
-    const children = [];
-    for (const imageUrl of uploadedUrls) {
-      children.push(await createCarouselItem(imageUrl));
-    }
-
-    const creationId = await createCarouselContainer(children, caption);
-    const mediaId = await publishContainer(creationId);
-
-    res.json({
-      ok: true,
-      dryRun: false,
-      mediaId,
-      creationId,
-      children,
-      ...payloadPreview
-    });
+    const result = await publishCarousel({ imageUrls: uploadedUrls, caption, dryRun });
+    res.json(result);
   } catch (error) {
     next(error);
   }

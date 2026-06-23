@@ -1,0 +1,49 @@
+name: Instagram Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      post_file:
+        description: 'JSON post file path, e.g. posts/example-instagram-post.json'
+        required: true
+        default: 'posts/example-instagram-post.json'
+      dry_run:
+        description: 'Validate only. true blocks live publishing.'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GRAPH_API_VERSION: ${{ vars.GRAPH_API_VERSION || 'v23.0' }}
+      IG_USER_ID: ${{ secrets.IG_USER_ID }}
+      INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+      MAX_CAROUSEL_IMAGES: ${{ vars.MAX_CAROUSEL_IMAGES || '10' }}
+      IG_WAIT_FOR_READY: ${{ vars.IG_WAIT_FOR_READY || 'true' }}
+      IG_READY_MAX_ATTEMPTS: ${{ vars.IG_READY_MAX_ATTEMPTS || '12' }}
+      IG_READY_INTERVAL_MS: ${{ vars.IG_READY_INTERVAL_MS || '5000' }}
+      DRY_RUN_ONLY: ${{ inputs.dry_run }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Check Instagram account
+        run: npm run check:instagram
+
+      - name: Publish Instagram post
+        run: npm run publish:instagram -- "${{ inputs.post_file }}" ${{ inputs.dry_run == 'true' && '--dry-run' || '' }}
