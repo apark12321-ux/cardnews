@@ -3,23 +3,23 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>요즘돈 카드뉴스 자동화 툴</title>
+  <title>요즘돈 카드뉴스 자동 발행 센터</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <header class="hero">
     <div>
-      <p class="eyebrow">Instagram Carousel Automation</p>
-      <h1>요즘돈 카드뉴스 자동화 툴</h1>
-      <p class="lead">주제와 확인된 사실을 입력하면 13장 캐러셀 원고, 캡션, 해시태그, 발행 전 체크리스트를 자동 생성합니다.</p>
+      <p class="eyebrow">Instagram Auto Publishing</p>
+      <h1>요즘돈 카드뉴스 자동 발행 센터</h1>
+      <p class="lead">주제와 확인된 사실을 입력하면 카드 원고를 만들고, <b>발행 큐에 등록</b>해 GitHub Actions가 정해진 시간에 자동 게시합니다.</p>
     </div>
-    <aside class="rule"><b>정직 원칙</b><br />금액·기한·조건은 공식 출처 확인 후 발행</aside>
+    <aside class="rule"><b>자동화 흐름</b><br />작성 → 큐 등록 → 예약 실행 → PNG 렌더 → Cloudinary 업로드 → Instagram 게시</aside>
   </header>
 
   <main class="layout">
     <section class="panel">
       <div class="panel-title">
-        <h2>1. 입력</h2>
+        <h2>1. 카드 작성</h2>
         <button id="sampleBtn" class="ghost" type="button">샘플</button>
       </div>
 
@@ -51,27 +51,34 @@
 
       <div class="buttons">
         <button id="generateBtn" type="button">카드뉴스 생성</button>
+        <button id="queueBtn" type="button" class="primary-alt">발행 큐에 등록</button>
         <button id="resetBtn" class="ghost" type="button">초기화</button>
+      </div>
+
+      <div class="automation-note">
+        <b>발행 큐에 등록</b>을 누르면 Vercel API가 GitHub <code>posts/</code> 폴더에 JSON을 직접 생성합니다.
+        이후 GitHub Actions가 매일 09:00 KST에 queued 글을 하나씩 자동 게시합니다.
       </div>
     </section>
 
     <section class="panel">
       <div class="panel-title">
-        <h2>2. 결과</h2>
+        <h2>2. 결과·자동화</h2>
         <div class="buttons small">
           <button id="copyBtn" class="ghost" type="button">복사</button>
-          <button id="mdBtn" class="ghost" type="button">MD 저장</button>
-          <button id="jsonBtn" class="ghost" type="button">JSON 저장</button>
+          <button id="jsonBtn" class="ghost" type="button">JSON 다운로드</button>
+          <a class="button-link ghost" href="./dashboard">상태 보기</a>
         </div>
       </div>
       <div id="status" class="status">입력값을 채운 뒤 생성 버튼을 누르세요.</div>
       <div id="preview" class="cards"></div>
       <details open><summary>Markdown 원고</summary><textarea id="markdown" class="output" rows="18" readonly></textarea></details>
+      <details><summary>발행 큐 JSON</summary><textarea id="jsonOutput" class="output" rows="18" readonly></textarea></details>
       <details><summary>발행 전 체크리스트</summary><div id="checklist" class="checklist"></div></details>
     </section>
   </main>
 
-  <footer>요즘돈 카드뉴스 자동화 툴 · 입력값은 브라우저 안에서만 처리됩니다.</footer>
+  <footer>요즘돈 카드뉴스 자동 발행 센터 · 토큰은 브라우저에 저장하지 않고 Vercel/GitHub Secrets에서만 사용합니다.</footer>
   <script src="./app.js"></script>
 </body>
 </html>
