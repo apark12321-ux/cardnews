@@ -2,10 +2,11 @@
 
 인스타 카드뉴스 채널 **요즘돈** 운영을 위한 자동화 툴입니다.
 
-두 가지 모드가 있습니다.
+세 가지 모드가 있습니다.
 
 1. `index.html` — 정적 원고 생성기
-2. `public/publisher.html` — 자동 생성·PNG 렌더링·Instagram 자동 등록기
+2. `public/publisher.html` — 자동 생성·PNG 렌더링·Instagram 즉시 등록기
+3. `.github/workflows/instagram-publish.yml` — JSON 파일 기반 GitHub Actions 자동 발행
 
 ## 1. 정적 원고 생성기
 
@@ -26,7 +27,7 @@ cd cardnews
 - 발행 전 검수 체크리스트
 - 캔바/미리캔버스에 붙여넣기 쉬운 Markdown 원고
 
-## 2. 자동 생성·자동 등록기
+## 2. 자동 생성·즉시 등록기
 
 Instagram 자동 등록까지 쓰려면 Node 서버를 실행해야 합니다.
 
@@ -55,6 +56,48 @@ http://localhost:3000/public/publisher.html
 → 인스타그램 게시물 등록 완료
 ```
 
+## 3. JSON 기반 자동 발행
+
+이미 공개 HTTPS 이미지 URL이 준비되어 있다면 브라우저 없이 명령어로 발행할 수 있습니다.
+
+```bash
+npm run check:instagram
+npm run publish:instagram -- posts/example-instagram-post.json --dry-run
+npm run publish:instagram -- posts/example-instagram-post.json
+```
+
+게시물 파일 형식:
+
+```json
+{
+  "caption": "게시물 캡션",
+  "imageUrls": [
+    "https://example.com/card-01.png",
+    "https://example.com/card-02.png"
+  ],
+  "dryRun": true
+}
+```
+
+## 4. GitHub Actions 자동 발행
+
+GitHub 저장소의 Actions 탭에서 `Instagram Publish` 워크플로우를 수동 실행할 수 있습니다.
+
+```txt
+Actions → Instagram Publish → Run workflow
+```
+
+입력값:
+
+```txt
+post_file: posts/example-instagram-post.json
+dry_run: true 또는 false
+```
+
+처음에는 반드시 `dry_run=true`로 검증한 뒤, 성공하면 `dry_run=false`로 실제 발행합니다.
+
+자세한 설명은 `docs/instagram-github-actions.md`를 확인하세요.
+
 ## 자동 등록 환경변수
 
 `.env.example`을 `.env`로 복사한 뒤 아래 값을 채워야 합니다.
@@ -67,6 +110,15 @@ CLOUDINARY_API_KEY=Cloudinary API Key
 CLOUDINARY_API_SECRET=Cloudinary API Secret
 ```
 
+GitHub Actions에서는 아래 값을 Repository Secrets에 넣습니다.
+
+```txt
+IG_USER_ID
+INSTAGRAM_ACCESS_TOKEN
+```
+
+Cloudinary 값은 브라우저 즉시 등록기에서 PNG를 업로드할 때 필요합니다. GitHub Actions 방식은 이미 공개된 `imageUrls`를 사용하므로 Cloudinary가 필수는 아닙니다.
+
 ## 파일 구조
 
 ```txt
@@ -77,16 +129,24 @@ cardnews/
 ├─ server.js
 ├─ package.json
 ├─ .env.example
+├─ src/
+│  └─ instagramPublisher.mjs
+├─ scripts/
+│  └─ publish-instagram.mjs
 ├─ public/
 │  ├─ publisher.html
 │  ├─ publisher.css
 │  └─ publisher.js
+├─ posts/
+│  └─ example-instagram-post.json
 ├─ docs/
+│  ├─ instagram-github-actions.md
 │  ├─ auto-publish.md
 │  └─ auto-publishing-setup.md
 ├─ templates/
 │  └─ workflow.md
-└─ README.md
+└─ .github/workflows/
+   └─ instagram-publish.yml
 ```
 
 ## 운영 원칙
