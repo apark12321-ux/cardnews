@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>요즘돈 자동화 진행 대시보드</title>
+  <link rel="stylesheet" href="./dashboard.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Yojeumdon · Automation Control Room</p>
+      <h1>요즘돈 카드뉴스 자동화 진행상태</h1>
+      <p class="lead">발행 큐, GitHub Actions 실행, 자동화 부품 상태를 한 화면에서 확인합니다. n8n처럼 “어디까지 됐는지” 보이게 만드는 운영 화면입니다.</p>
+    </div>
+    <div class="top-actions">
+      <a class="button ghost" href="./index.html">생성기 열기</a>
+      <a class="button" id="actionsLink" target="_blank" rel="noreferrer">Actions 보기</a>
+      <button id="refreshBtn" class="button" type="button">새로고침</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="summary-grid" aria-label="요약 상태">
+      <article class="summary-card">
+        <span class="label">발행 대기</span>
+        <strong id="queuedCount">-</strong>
+        <small>posts/*.json queued</small>
+      </article>
+      <article class="summary-card">
+        <span class="label">발행 완료</span>
+        <strong id="publishedCount">-</strong>
+        <small>status=published</small>
+      </article>
+      <article class="summary-card">
+        <span class="label">최근 실행</span>
+        <strong id="latestRunStatus">확인 중</strong>
+        <small id="latestRunTime">GitHub Actions</small>
+      </article>
+      <article class="summary-card">
+        <span class="label">예약 자동화</span>
+        <strong id="scheduleStatus">확인 중</strong>
+        <small id="scheduleDetail">cron schedule</small>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">
+        <div>
+          <p class="eyebrow">Pipeline Map</p>
+          <h2>자동 발행 흐름</h2>
+        </div>
+        <span id="lastChecked" class="pill">-</span>
+      </div>
+
+      <div id="pipeline" class="pipeline" aria-live="polite"></div>
+    </section>
+
+    <section class="split">
+      <article class="panel">
+        <div class="panel-title">
+          <div>
+            <p class="eyebrow">Queue</p>
+            <h2>발행 큐</h2>
+          </div>
+          <a id="postsLink" class="text-link" target="_blank" rel="noreferrer">posts 폴더</a>
+        </div>
+        <div id="queueList" class="queue-list"></div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-title">
+          <div>
+            <p class="eyebrow">Runs</p>
+            <h2>최근 실행 기록</h2>
+          </div>
+          <a id="workflowLink" class="text-link" target="_blank" rel="noreferrer">워크플로우</a>
+        </div>
+        <div id="runsList" class="runs-list"></div>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">
+        <div>
+          <p class="eyebrow">Checklist</p>
+          <h2>완전 자동화 부품 점검</h2>
+        </div>
+      </div>
+      <div id="checklist" class="checklist"></div>
+      <p class="hint">보안상 브라우저에서는 GitHub Secrets 값 자체를 확인할 수 없습니다. IG_USER_ID, INSTAGRAM_ACCESS_TOKEN 같은 비밀값은 Actions 실행 결과로만 간접 확인합니다.</p>
+    </section>
+
+    <section class="panel muted">
+      <h2>이 화면의 역할</h2>
+      <p>이 대시보드는 GitHub 공개 API를 읽어서 현재 저장소 상태를 보여줍니다. 별도 서버나 n8n 없이도 Vercel 정적 사이트에서 동작합니다. 자동 게시 자체는 GitHub Actions가 수행하고, 이 화면은 관제판 역할을 합니다.</p>
+    </section>
+  </main>
+
+  <footer>
+    요즘돈 자동화 대시보드 · GitHub API 기반 · 토큰/시크릿은 화면에 노출하지 않음
+  </footer>
+
+  <script src="./dashboard.js"></script>
+</body>
+</html>
