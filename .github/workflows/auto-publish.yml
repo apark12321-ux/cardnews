@@ -1,0 +1,97 @@
+name: Auto Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'true = render/upload test only, false = publish to Instagram'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      post_file:
+        description: 'optional: specific posts/*.json file'
+        required: false
+        default: ''
+  schedule:
+    - cron: '0 0 * * *'
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: yojeumdon-auto-publish
+  cancel-in-progress: false
+
+jobs:
+  auto-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GRAPH_API_VERSION: ${{ vars.GRAPH_API_VERSION || 'v23.0' }}
+      IG_USER_ID: ${{ secrets.IG_USER_ID }}
+      INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+      CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+      CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+      CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+      CLOUDINARY_FOLDER: ${{ vars.CLOUDINARY_FOLDER || 'yojeumdon-cardnews' }}
+      MAX_CAROUSEL_IMAGES: ${{ vars.MAX_CAROUSEL_IMAGES || '10' }}
+      IG_WAIT_FOR_READY: ${{ vars.IG_WAIT_FOR_READY || 'true' }}
+      IG_READY_MAX_ATTEMPTS: ${{ vars.IG_READY_MAX_ATTEMPTS || '12' }}
+      IG_READY_INTERVAL_MS: ${{ vars.IG_READY_INTERVAL_MS || '5000' }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate queue
+        run: npm run validate
+
+      - name: Auto publish next queued post
+        run: |
+          ARGS=""
+          if [ "$DRY_RUN" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          if [ -n "${{ inputs.post_file }}" ]; then
+            ARGS="$ARGS --file ${{ inputs.post_file }}"
+          fi
+          node scripts/auto-publish.mjs $ARGS
+
+      - name: Upload rendered cards
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendered-cards
+          path: |
+            out/**
+            _automation/status.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Commit queue status
+        if: always() && env.DRY_RUN != 'true'
+        run: |
+          git config user.name "yojeumdon-bot"
+          git config user.email "actions@github.com"
+          git add posts _automation || true
+          if git diff --cached --quiet; then
+            echo "No queue/status changes to commit."
+          else
+            git commit -m "chore: update auto publish status"
+            git push
+          fi
